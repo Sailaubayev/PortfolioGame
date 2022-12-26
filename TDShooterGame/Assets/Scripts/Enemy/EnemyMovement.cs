@@ -3,70 +3,58 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(LineRenderer))]
-[RequireComponent(typeof(Enemy))]
 public class EnemyMovement : MonoBehaviour
 {
+
+    [SerializeField] private Transform[] _patrolPoints;
     [SerializeField] private float _moveSpeed = 1f;
     [SerializeField] private float _turnSpeed = 10f;
-    [SerializeField] private Transform[] _patrolPoints;
-
 
     private int _destPoint = 0;
-    private NavMeshAgent _agent;
     private LineRenderer _lineRenderer;
-    private Enemy _enemy;
+    private Transform _thisTransform;
+
+    public NavMeshAgent Agent { get; private set; }
 
     private void Awake()
     {
-        _agent = GetComponent<NavMeshAgent>();
+        Agent = GetComponent<NavMeshAgent>();
         _lineRenderer = GetComponent<LineRenderer>();
-        _enemy = GetComponent<Enemy>();
+        _thisTransform = GetComponent<Transform>();
+       // _enemy = GetComponent<Enemy>();
 
-        _agent.speed = _moveSpeed;
-        _agent.updateRotation = false;
-        _agent.updateUpAxis = false;
-        _agent.autoBraking = false;
+        Agent.speed = _moveSpeed;
+        Agent.updateRotation = false;
+        Agent.updateUpAxis = false;
+        Agent.autoBraking = false;
 
         GotoNextPoint();
-    }
-
-    private void FixedUpdate()
-    {
-        if(_enemy.PlayerDetected)
-            AgentMovement();
-        else
-        {
-            if (!_agent.pathPending && _agent.remainingDistance < 0.5f)
-                AgentPatrol();
-            AgentRotation();
-        }
     }
 
     //  отвечает за движение врага в сторону игрока
-    private void AgentMovement()
+    public void AgentMove(Transform player)
     {
-        _agent.SetDestination(new Vector3(_enemy.Player.position.x, _enemy.Player.position.y, _agent.transform.position.z));
+        Agent.SetDestination(new Vector3(player.position.x, player.position.y, Agent.transform.position.z));
         DrawLine();
-        AgentRotation();
     }
 
-     // отвечает за движение врага по маршруту через точки
-    private void AgentPatrol()
+    // отвечает за движение врага по маршруту через точки
+    public void AgentPatrol()
     {
         GotoNextPoint();
         DrawLine();
-        AgentRotation();
+        Debug.Log("GoNextPoint");
     }
 
     // поворачивает врага в сторону которую он движеться
-    private void AgentRotation()
+    public void AgentRotation()
     {
-        Vector3 myLocation = transform.position;
+        Vector3 myLocation = _thisTransform.position;
         Vector3 lookNavMeshNextCorner;
-        if (_agent.path.corners.Length > 0)
-            lookNavMeshNextCorner = _agent.path.corners[1];
+        if (Agent.path.corners.Length > 0)
+            lookNavMeshNextCorner = Agent.path.corners[1];
         else
-            lookNavMeshNextCorner = _agent.path.corners[0];
+            lookNavMeshNextCorner = Agent.path.corners[0];
         lookNavMeshNextCorner.z = myLocation.z;
         
         Vector3 vectorToTarget = lookNavMeshNextCorner - myLocation;
@@ -75,7 +63,7 @@ public class EnemyMovement : MonoBehaviour
 
         Quaternion targetRotation = Quaternion.LookRotation(forward: Vector3.forward, upwards: rotatedVectorToTarget);
 
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, _turnSpeed);
+        _thisTransform.rotation = Quaternion.RotateTowards(_thisTransform.rotation, targetRotation, _turnSpeed);
     }
 
     //Патрулирование врага
@@ -86,7 +74,7 @@ public class EnemyMovement : MonoBehaviour
             return;
 
         // отправляет врага патрулировать на след точку
-        _agent.destination = _patrolPoints[_destPoint].position;
+        Agent.destination = _patrolPoints[_destPoint].position;
         // Choose the next point in the array as the destination,
         // cycling to the start if necessary.
         _destPoint = (_destPoint + 1) % _patrolPoints.Length;
@@ -96,7 +84,7 @@ public class EnemyMovement : MonoBehaviour
     //отрисовывает линию передвижения врага
     private void DrawLine()
     {
-        _lineRenderer.positionCount = _agent.path.corners.Length;
-        _lineRenderer.SetPositions(_agent.path.corners);
+        _lineRenderer.positionCount = Agent.path.corners.Length;
+        _lineRenderer.SetPositions(Agent.path.corners);
     }
 }
